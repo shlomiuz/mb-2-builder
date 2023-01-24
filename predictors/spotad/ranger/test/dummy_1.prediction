@@ -1,0 +1,8 @@
+Class predictions, one sample per row.
+0 1 
+
+1 0
+0 1
+0.975 0.025
+0.999925 7.51005e-05 
+0.666666 0.333333

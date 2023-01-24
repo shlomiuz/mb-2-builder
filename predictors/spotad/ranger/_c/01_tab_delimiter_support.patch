@@ -1,0 +1,15 @@
+diff --git a/src/Data.cpp b/src/Data.cpp
+index ad7687f..9de4288 100644
+--- a/src/Data.cpp
++++ b/src/Data.cpp
+@@ -86,7 +86,9 @@ bool Data::loadFromFile(std::string filename) {
+   getline(input_file, header_line);
+ 
+   // Find out if comma, semicolon or whitespace seperated and call appropriate method
+-  if (header_line.find(",") != std::string::npos) {
++  if (header_line.find("\t") != std::string::npos) {
++    result = loadFromFileOther(input_file, header_line, '\t');
++  } else if (header_line.find(",") != std::string::npos) {
+     result = loadFromFileOther(input_file, header_line, ',');
+   } else if (header_line.find(";") != std::string::npos) {
+     result = loadFromFileOther(input_file, header_line, ';');

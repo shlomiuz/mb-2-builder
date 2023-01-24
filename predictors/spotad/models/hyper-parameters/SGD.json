@@ -1,0 +1,26 @@
+{
+  "loss": [
+    "log",
+    "modified_huber",
+    "perceptron",
+    "hinge",
+    "squared_hinge"
+  ],
+  "penalty": [
+    "l2",
+    "l1",
+    "elasticnet"
+  ],
+  "alpha": [
+    1e-15,
+    1e-10,
+    1e-8,
+    1e-5,
+    1e-4,
+    1e-3,
+    1e-2,
+    1,
+    5,
+    10
+  ]
+}

@@ -1,0 +1,10 @@
+nose
+xgboost
+scikit-learn
+scipy
+pathlib2
+docopt
+pandas
+psutil
+ipython
+boto3

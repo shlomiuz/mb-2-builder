@@ -1,0 +1,152 @@
+diff --git a/cpp_version/CMakeLists.txt b/cpp_version/CMakeLists.txt
+index 397bb53..fadd967 100644
+--- a/cpp_version/CMakeLists.txt
++++ b/cpp_version/CMakeLists.txt
+@@ -17,6 +17,7 @@ endif()
+ ## ======================================================================================##
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11")
+ 
++
+ ## ======================================================================================##
+ ## In Clang phtread flag only for compiler, not for linker. For
+ ## windows use static linking
+@@ -55,5 +56,16 @@ ADD_CUSTOM_TARGET(release
+ ## ======================================================================================##
+ ## Executable
+ ## ======================================================================================##
++
++# Add ZLIB package
++find_package (ZLIB)
++include_directories(${ZLIB_INCLUDE_DIRS})
++
++find_package (Boost REQUIRED COMPONENTS system iostreams)
++include_directories(${Boost_INCLUDE_DIRS})
++
+ add_executable(ranger ${SOURCES})
+ 
++target_link_libraries (ranger ${ZLIB_LIBRARIES})
++target_link_libraries (ranger ${Boost_LIBRARIES})
++
+diff --git a/src/Data.cpp b/src/Data.cpp
+index 9de4288..189d09a 100644
+--- a/src/Data.cpp
++++ b/src/Data.cpp
+@@ -28,12 +28,17 @@
+ 
+ #include <fstream>
+ #include <sstream>
++#include <iostream>
+ #include <stdexcept>
+ #include <algorithm>
+ #include <iterator>
+ 
+ #include "Data.h"
+ #include "utility.h"
++#include <boost/algorithm/string/predicate.hpp>
++#include <boost/iostreams/filtering_stream.hpp>
++#include <boost/iostreams/filter/gzip.hpp>
++#include <boost/iostreams/device/file.hpp>
+ 
+ Data::Data() :
+     num_rows(0), num_rows_rounded(0), num_cols(0), sparse_data(0), num_cols_no_sparse(0), externalData(true), index_data(
+@@ -60,48 +65,55 @@ void Data::addSparseData(unsigned char* sparse_data, size_t num_cols_sparse) {
+   this->sparse_data = sparse_data;
+ }
+ 
++
+ bool Data::loadFromFile(std::string filename) {
+ 
+   bool result;
+ 
+   // Open input file
+-  std::ifstream input_file;
+-  input_file.open(filename);
+-  if (!input_file.good()) {
+-    throw std::runtime_error("Could not open input file.");
++  boost::iostreams::filtering_istream input_file;
++  if (boost::ends_with(filename, ".gz")){
++    input_file.push(boost::iostreams::gzip_decompressor());
+   }
+ 
++  input_file.push(boost::iostreams::file_source(filename));
+   // Count number of rows
+   size_t line_count = 0;
+   std::string line;
++
+   while (getline(input_file, line)) {
+     ++line_count;
+   }
+   num_rows = line_count - 1;
+-  input_file.close();
+-  input_file.open(filename);
++  input_file.pop(); // should release the file
++
++  boost::iostreams::filtering_istream input_file2;
++  if (boost::ends_with(filename, ".gz")){
++    input_file2.push(boost::iostreams::gzip_decompressor());
++  }
+ 
++  input_file2.push(boost::iostreams::file_source(filename));
+   // Check if comma, semicolon or whitespace seperated
+   std::string header_line;
+-  getline(input_file, header_line);
++  getline(input_file2, header_line);
+ 
+   // Find out if comma, semicolon or whitespace seperated and call appropriate method
+   if (header_line.find("\t") != std::string::npos) {
+-    result = loadFromFileOther(input_file, header_line, '\t');
++    result = loadFromFileOther(input_file2, header_line, '\t');
+   } else if (header_line.find(",") != std::string::npos) {
+-    result = loadFromFileOther(input_file, header_line, ',');
++    result = loadFromFileOther(input_file2, header_line, ',');
+   } else if (header_line.find(";") != std::string::npos) {
+-    result = loadFromFileOther(input_file, header_line, ';');
++    result = loadFromFileOther(input_file2, header_line, ';');
+   } else {
+-    result = loadFromFileWhitespace(input_file, header_line);
++    result = loadFromFileWhitespace(input_file2, header_line);
+   }
+ 
+   externalData = false;
+-  input_file.close();
++  input_file2.pop(); // should release the file
+   return result;
+ }
+ 
+-bool Data::loadFromFileWhitespace(std::ifstream& input_file, std::string header_line) {
++bool Data::loadFromFileWhitespace(boost::iostreams::filtering_istream& input_file, std::string header_line) {
+ 
+   // Read header
+   std::string header_token;
+@@ -136,7 +148,7 @@ bool Data::loadFromFileWhitespace(std::ifstream& input_file, std::string header_
+   return error;
+ }
+ 
+-bool Data::loadFromFileOther(std::ifstream& input_file, std::string header_line, char seperator) {
++bool Data::loadFromFileOther(boost::iostreams::filtering_istream& input_file, std::string header_line, char seperator) {
+ 
+   // Read header
+   std::string header_token;
+diff --git a/src/Data.h b/src/Data.h
+index beaf1dc..d249d42 100644
+--- a/src/Data.h
++++ b/src/Data.h
+@@ -33,6 +33,7 @@
+ #include <iostream>
+ 
+ #include "globals.h"
++#include <boost/iostreams/filtering_stream.hpp>
+ 
+ class Data {
+ public:
+@@ -49,8 +50,8 @@ public:
+   void addSparseData(unsigned char* sparse_data, size_t num_cols_sparse);
+ 
+   bool loadFromFile(std::string filename);
+-  bool loadFromFileWhitespace(std::ifstream& input_file, std::string header_line);
+-  bool loadFromFileOther(std::ifstream& input_file, std::string header_line, char seperator);
++  bool loadFromFileWhitespace(boost::iostreams::filtering_istream& input_file, std::string header_line);
++  bool loadFromFileOther(boost::iostreams::filtering_istream& input_file, std::string header_line, char seperator);
+ 
+   void getAllValues(std::vector<double>& all_values, std::vector<size_t>& sampleIDs, size_t varID);
+ 
